@@ -53,7 +53,7 @@ def extract_price(price_str):
 
 
 def extract_images_from_excel(excel_path, output_dir):
-    """从Excel中提取图片"""
+    """从Excel中提取图片，返回有图片的行号列表"""
     wb = openpyxl.load_workbook(excel_path)
     ws = wb.active
     
@@ -65,22 +65,37 @@ def extract_images_from_excel(excel_path, output_dir):
         if f.endswith('.png'):
             os.remove(os.path.join(output_dir, f))
     
-    # 提取图片
+    # 提取图片并记录有图片的行号
+    image_rows = set()  # 存储有图片的行号
     image_count = 0
+    
     if hasattr(ws, '_images'):
         for idx, img in enumerate(ws._images):
             try:
+                # 获取图片锚点位置
+                anchor = img.anchor
+                if hasattr(anchor, '_from'):
+                    row = anchor._from.row + 1  # 转换为1-based行号
+                elif hasattr(anchor, 'row'):
+                    row = anchor.row
+                else:
+                    # 如果无法获取行号，按顺序分配
+                    row = idx + 2  # 数据从第2行开始
+                
                 image_data = img._data()
                 image_format = img.format if hasattr(img, 'format') else 'png'
-                img_path = os.path.join(output_dir, f'product_{idx+1}.{image_format}')
+                img_path = os.path.join(output_dir, f'product_{row}.{image_format}')
                 with open(img_path, 'wb') as f:
                     f.write(image_data)
                 image_count += 1
+                image_rows.add(row)
+                print(f'图片已保存: product_{row}.{image_format} (对应第{row}行)')
             except Exception as e:
                 print(f'图片{idx+1}提取失败: {e}')
     
     print(f'已提取 {image_count} 张图片')
-    return image_count
+    print(f'有图片的行号: {sorted(image_rows)}')
+    return image_rows
 
 
 def process_excel(excel_path):
@@ -94,15 +109,19 @@ def process_excel(excel_path):
     # 提取图片
     script_dir = os.path.dirname(os.path.abspath(__file__))
     images_dir = os.path.join(script_dir, 'images')
-    extract_images_from_excel(excel_path, images_dir)
+    image_rows = extract_images_from_excel(excel_path, images_dir)
     
     # 提取数据
     products = []
     for row in range(2, ws.max_row + 1):
+        # 检查是否有图片
+        has_image = row in image_rows
+        
         # 提取价格并+10
         raw_price = ws.cell(row, 5).value
         adjusted_price = extract_price(raw_price)
         
+        # 构建商品数据
         product = {
             'id': row - 1,
             '发售日': str(ws.cell(row, 1).value)[:10] if ws.cell(row, 1).value else '',
@@ -111,8 +130,8 @@ def process_excel(excel_path):
             '品名': ws.cell(row, 4).value or '',
             '价格': adjusted_price,
             '定金': ws.cell(row, 6).value or '',
-            '备注': ws.cell(row, 7).value or '',
-            '图片': f'images/product_{row-1}.png'
+            '下单店铺': ws.cell(row, 7).value or '',  # 将备注改为下单店铺
+            '图片': f'images/product_{row}.png' if has_image else ''  # 无图则不显示图片路径
         }
         products.append(product)
     
