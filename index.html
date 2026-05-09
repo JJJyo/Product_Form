@@ -120,6 +120,11 @@
             width: 120px;
         }
 
+        .product-remark {
+            color: #666;
+            font-size: 0.85em;
+        }
+
         .products-table td {
             padding: 12px;
             border-bottom: 1px solid #eee;
@@ -328,8 +333,8 @@
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>微信号</label>
-                    <input type="text" id="userWechat" placeholder="请输入微信号">
+                    <label>下单店铺</label>
+                    <input type="text" id="userShop" placeholder="请输入下单店铺">
                 </div>
                 <div class="form-group">
                     <label>备注</label>
@@ -344,6 +349,7 @@
                     <th>序号</th>
                     <th>图片</th>
                     <th>商品名称</th>
+                    <th>备注</th>
                     <th>价格</th>
                     <th>数量</th>
                 </tr>
@@ -407,7 +413,7 @@
             } catch (error) {
                 console.error('加载商品数据失败:', error);
                 document.getElementById('productTableBody').innerHTML = 
-                    '<tr><td colspan="5" style="text-align: center; padding: 50px;">加载数据失败，请刷新页面重试</td></tr>';
+                    '<tr><td colspan="6" style="text-align: center; padding: 50px;">加载数据失败，请刷新页面重试</td></tr>';
             }
         }
 
@@ -416,18 +422,20 @@
             const tbody = document.getElementById('productTableBody');
             tbody.innerHTML = products.map(product => {
                 const price = parseFloat(product.价格) || 0;
+                const imgHtml = product.图片
+                    ? `<img src="${product.图片}" alt="${escapeHtml(product.品名)}" class="product-img" onerror="this.style.display='none'">`
+                    : '';
+                const remark = product.备注 || '';
                 return `
                     <tr data-id="${product.id}">
                         <td style="text-align: center;">${product.id}</td>
-                        <td>
-                            <img src="${product.图片}" alt="${product.品名}" 
-                                class="product-img" onerror="this.style.display='none'">
-                        </td>
+                        <td>${imgHtml}</td>
                         <td class="product-name">${escapeHtml(product.品名)}</td>
+                        <td class="product-remark">${escapeHtml(remark)}</td>
                         <td class="product-price">¥${price}</td>
                         <td>
-                            <input type="number" class="quantity-input" 
-                                min="0" value="0" 
+                            <input type="number" class="quantity-input"
+                                min="0" value="0"
                                 onchange="updateQuantity(${product.id}, this.value, ${price})"
                                 placeholder="0">
                         </td>
@@ -511,15 +519,14 @@
         function confirmSubmit() {
             const name = document.getElementById('userName').value.trim();
             const phone = document.getElementById('userPhone').value.trim();
-            const wechat = document.getElementById('userWechat').value.trim();
+            const shop = document.getElementById('userShop').value.trim();
             const remark = document.getElementById('userRemark').value.trim();
 
-            // 构建订单数据
             const order = {
                 user: {
                     name: name,
                     phone: phone,
-                    wechat: wechat,
+                    shop: shop,
                     remark: remark
                 },
                 items: [],
@@ -578,7 +585,7 @@
             let text = `【新订单】\n`;
             text += `订购人：${order.user.name}\n`;
             text += `手机号：${order.user.phone}\n`;
-            if (order.user.wechat) text += `微信号：${order.user.wechat}\n`;
+            if (order.user.shop) text += `下单店铺：${order.user.shop}\n`;
             text += `下单时间：${order.submitTime}\n`;
             text += `\n【商品清单】\n`;
             

@@ -52,76 +52,87 @@ def extract_price(price_str):
         return price_str
 
 
-def extract_images_from_excel(excel_path, output_dir):
-    """从Excel中提取图片，返回有图片的行号列表"""
+def extract_images_from_excel(excel_path, output_dir, no_image_rows=None):
+    """从Excel中按顺序提取图片，跳过无图行，返回有图片的行号集合和格式映射"""
+    if no_image_rows is None:
+        no_image_rows = set()
+
     wb = openpyxl.load_workbook(excel_path)
     ws = wb.active
-    
-    # 创建图片输出目录
+
     os.makedirs(output_dir, exist_ok=True)
-    
-    # 清空旧图片
+
     for f in os.listdir(output_dir):
-        if f.endswith('.png'):
+        if f.endswith(('.png', '.jpg', '.jpeg')):
             os.remove(os.path.join(output_dir, f))
-    
-    # 提取图片并记录有图片的行号
-    image_rows = set()  # 存储有图片的行号
-    image_count = 0
-    
+
+    raw_images = []
     if hasattr(ws, '_images'):
         for idx, img in enumerate(ws._images):
             try:
-                # 获取图片锚点位置
-                anchor = img.anchor
-                if hasattr(anchor, '_from'):
-                    row = anchor._from.row + 1  # 转换为1-based行号
-                elif hasattr(anchor, 'row'):
-                    row = anchor.row
-                else:
-                    # 如果无法获取行号，按顺序分配
-                    row = idx + 2  # 数据从第2行开始
-                
                 image_data = img._data()
-                image_format = img.format if hasattr(img, 'format') else 'png'
-                img_path = os.path.join(output_dir, f'product_{row}.{image_format}')
-                with open(img_path, 'wb') as f:
-                    f.write(image_data)
-                image_count += 1
-                image_rows.add(row)
-                print(f'图片已保存: product_{row}.{image_format} (对应第{row}行)')
+                image_format = (img.format if hasattr(img, 'format') else 'png').lower()
+                if image_format == 'jpeg':
+                    image_format = 'jpg'
+                raw_images.append({
+                    'data': image_data,
+                    'format': image_format,
+                })
             except Exception as e:
                 print(f'图片{idx+1}提取失败: {e}')
-    
-    print(f'已提取 {image_count} 张图片')
+
+    rows_needing_images = []
+    for row in range(2, ws.max_row + 1):
+        if row not in no_image_rows:
+            rows_needing_images.append(row)
+
+    image_rows = set()
+    image_formats = {}
+    for i, img_info in enumerate(raw_images):
+        if i < len(rows_needing_images):
+            target_row = rows_needing_images[i]
+            fmt = img_info['format']
+            img_path = os.path.join(output_dir, f'product_{target_row}.{fmt}')
+            with open(img_path, 'wb') as f:
+                f.write(img_info['data'])
+            image_rows.add(target_row)
+            image_formats[target_row] = fmt
+            print(f'图片已保存: product_{target_row}.{fmt} (对应第{target_row}行)')
+
+    print(f'已提取 {len(raw_images)} 张图片')
     print(f'有图片的行号: {sorted(image_rows)}')
-    return image_rows
+    return image_rows, image_formats
 
 
 def process_excel(excel_path):
     """处理Excel文件并生成JSON"""
     print(f'正在处理: {excel_path}')
-    
-    # 读取Excel
+
     wb = openpyxl.load_workbook(excel_path)
     ws = wb.active
-    
-    # 提取图片
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
     images_dir = os.path.join(script_dir, 'images')
-    image_rows = extract_images_from_excel(excel_path, images_dir)
-    
-    # 提取数据
+
+    no_image_rows = set()
+    for row in range(2, ws.max_row + 1):
+        remark_val = str(ws.cell(row, 7).value or '').strip()
+        if remark_val == '无图':
+            no_image_rows.add(row)
+
+    image_rows, image_formats = extract_images_from_excel(excel_path, images_dir, no_image_rows)
+
     products = []
     for row in range(2, ws.max_row + 1):
-        # 检查是否有图片
         has_image = row in image_rows
-        
-        # 提取价格并+10
         raw_price = ws.cell(row, 5).value
         adjusted_price = extract_price(raw_price)
-        
-        # 构建商品数据
+
+        remark_val = str(ws.cell(row, 7).value or '').strip()
+        if remark_val == '无图':
+            remark_val = ''
+
+        fmt = image_formats.get(row, 'png')
         product = {
             'id': row - 1,
             '发售日': str(ws.cell(row, 1).value)[:10] if ws.cell(row, 1).value else '',
@@ -130,19 +141,18 @@ def process_excel(excel_path):
             '品名': ws.cell(row, 4).value or '',
             '价格': adjusted_price,
             '定金': ws.cell(row, 6).value or '',
-            '下单店铺': ws.cell(row, 7).value or '',  # 将备注改为下单店铺
-            '图片': f'images/product_{row}.png' if has_image else ''  # 无图则不显示图片路径
+            '备注': remark_val,
+            '图片': f'images/product_{row}.{fmt}' if has_image else ''
         }
         products.append(product)
-    
-    # 保存JSON
+
     json_path = os.path.join(script_dir, 'products_with_images.json')
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(products, f, ensure_ascii=False, indent=2)
-    
+
     print(f'已生成商品数据: {len(products)} 条')
     print(f'价格已自动+10')
-    
+
     return products
 
 

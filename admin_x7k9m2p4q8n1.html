@@ -373,7 +373,7 @@
             }
 
             let csv = '\uFEFF';
-            csv += '订单号,订购人,手机号,微信号,商品名称,单价,数量,小计,订单总价,下单时间,备注\n';
+            csv += '订单号,订购人,手机号,下单店铺,商品名称,单价,数量,小计,订单总价,下单时间,备注\n';
             
             orders.forEach((order, index) => {
                 order.items.forEach(item => {
@@ -381,7 +381,7 @@
                         index + 1,
                         order.user.name,
                         order.user.phone,
-                        order.user.wechat || '',
+                        order.user.shop || '',
                         item.name,
                         item.price,
                         item.quantity,
