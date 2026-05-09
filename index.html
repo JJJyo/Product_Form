@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品订购表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .user-info h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .products-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .products-table th:first-child {
+            width: 60px;
+            text-align: center;
+        }
+
+        .products-table th:nth-child(2) {
+            width: 80px;
+        }
+
+        .products-table th:nth-child(4) {
+            width: 100px;
+        }
+
+        .products-table th:nth-child(5) {
+            width: 120px;
+        }
+
+        .products-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+
+        .products-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .product-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .product-img:hover {
+            transform: scale(2);
+            z-index: 100;
+            position: relative;
+        }
+
+        .product-name {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .product-price {
+            color: #e53935;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .quantity-input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .total-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .total-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .total-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        .total-item:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 1.2em;
+            color: #e53935;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #4CAF50;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #45a049;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .order-summary {
+            margin-bottom: 20px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .success-message {
+            display: none;
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-table {
+                font-size: 0.85em;
+            }
+            
+            .product-img {
+                width: 50px;
+                height: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>商品订购表</h1>
+            <p>请填写订购数量和您的联系信息</p>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            订单提交成功！
+        </div>
+
+        <div class="user-info">
+            <h3>订购人信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>姓名 *</label>
+                    <input type="text" id="userName" placeholder="请输入您的姓名" required>
+                </div>
+                <div class="form-group">
+                    <label>手机号 *</label>
+                    <input type="tel" id="userPhone" placeholder="请输入手机号" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>微信号</label>
+                    <input type="text" id="userWechat" placeholder="请输入微信号">
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <input type="text" id="userRemark" placeholder="其他备注信息">
+                </div>
+            </div>
+        </div>
+
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>图片</th>
+                    <th>商品名称</th>
+                    <th>价格</th>
+                    <th>数量</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody">
+                <!-- 商品列表将在这里生成 -->
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <h3>订单汇总</h3>
+            <div id="orderSummary">
+                <div class="total-item">
+                    <span>商品总数</span>
+                    <span id="totalItems">0 件</span>
+                </div>
+                <div class="total-item">
+                    <span>商品种类</span>
+                    <span id="totalTypes">0 种</span>
+                </div>
+                <div class="total-item">
+                    <span>订单总价</span>
+                    <span id="totalPrice">¥0</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="submit-btn" onclick="submitOrder()">提交订单</button>
+    </div>
+
+    <!-- 订单确认弹窗 -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>订单确认</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="order-summary" id="modalOrderSummary">
+                <!-- 订单详情 -->
+            </div>
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #4CAF50;">
+                <div class="total-item">
+                    <span>总计</span>
+                    <span id="modalTotalPrice" style="color: #e53935; font-weight: 600; font-size: 1.2em;">¥0</span>
+                </div>
+            </div>
+            <button class="submit-btn" onclick="confirmSubmit()" style="margin-top: 20px;">确认提交</button>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let orderData = {};
+
+        // 加载商品数据
+        async function loadProducts() {
+            try {
+                const response = await fetch('products_with_images.json');
+                products = await response.json();
+                renderProducts();
+            } catch (error) {
+                console.error('加载商品数据失败:', error);
+                document.getElementById('productTableBody').innerHTML = 
+                    '<tr><td colspan="5" style="text-align: center; padding: 50px;">加载数据失败，请刷新页面重试</td></tr>';
+            }
+        }
+
+        // 渲染商品列表
+        function renderProducts() {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = products.map(product => {
+                const price = parseFloat(product.价格) || 0;
+                return `
+                    <tr data-id="${product.id}">
+                        <td style="text-align: center;">${product.id}</td>
+                        <td>
+                            <img src="${product.图片}" alt="${product.品名}" 
+                                class="product-img" onerror="this.style.display='none'">
+                        </td>
+                        <td class="product-name">${escapeHtml(product.品名)}</td>
+                        <td class="product-price">¥${price}</td>
+                        <td>
+                            <input type="number" class="quantity-input" 
+                                min="0" value="0" 
+                                onchange="updateQuantity(${product.id}, this.value, ${price})"
+                                placeholder="0">
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 更新数量
+        function updateQuantity(productId, quantity, price) {
+            quantity = parseInt(quantity) || 0;
+            if (quantity > 0) {
+                orderData[productId] = {
+                    quantity: quantity,
+                    price: price
+                };
+            } else {
+                delete orderData[productId];
+            }
+            updateSummary();
+        }
+
+        // 更新汇总
+        function updateSummary() {
+            let totalItems = 0;
+            let totalTypes = 0;
+            let totalPrice = 0;
+
+            for (const [id, data] of Object.entries(orderData)) {
+                totalItems += data.quantity;
+                totalTypes += 1;
+                totalPrice += data.quantity * data.price;
+            }
+
+            document.getElementById('totalItems').textContent = `${totalItems} 件`;
+            document.getElementById('totalTypes').textContent = `${totalTypes} 种`;
+            document.getElementById('totalPrice').textContent = `¥${totalPrice}`;
+        }
+
+        // 提交订单
+        function submitOrder() {
+            const name = document.getElementById('userName').value.trim();
+            const phone = document.getElementById('userPhone').value.trim();
+
+            if (!name) {
+                alert('请输入姓名');
+                return;
+            }
+            if (!phone) {
+                alert('请输入手机号');
+                return;
+            }
+            if (Object.keys(orderData).length === 0) {
+                alert('请至少选择一件商品');
+                return;
+            }
+
+            // 生成订单确认内容
+            const modalSummary = document.getElementById('modalOrderSummary');
+            let html = '';
+            let totalPrice = 0;
+
+            for (const [id, data] of Object.entries(orderData)) {
+                const product = products.find(p => p.id == id);
+                const itemTotal = data.quantity * data.price;
+                totalPrice += itemTotal;
+                html += `
+                    <div class="order-item">
+                        <span>${product.品名}</span>
+                        <span>¥${data.price} × ${data.quantity} = ¥${itemTotal}</span>
+                    </div>
+                `;
+            }
+
+            modalSummary.innerHTML = html;
+            document.getElementById('modalTotalPrice').textContent = `¥${totalPrice}`;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        // 确认提交
+        function confirmSubmit() {
+            const name = document.getElementById('userName').value.trim();
+            const phone = document.getElementById('userPhone').value.trim();
+            const wechat = document.getElementById('userWechat').value.trim();
+            const remark = document.getElementById('userRemark').value.trim();
+
+            // 构建订单数据
+            const order = {
+                user: {
+                    name: name,
+                    phone: phone,
+                    wechat: wechat,
+                    remark: remark
+                },
+                items: [],
+                totalPrice: 0,
+                submitTime: new Date().toLocaleString()
+            };
+
+            for (const [id, data] of Object.entries(orderData)) {
+                const product = products.find(p => p.id == id);
+                order.items.push({
+                    id: product.id,
+                    name: product.品名,
+                    price: data.price,
+                    quantity: data.quantity,
+                    subtotal: data.quantity * data.price
+                });
+                order.totalPrice += data.quantity * data.price;
+            }
+
+            // 保存到localStorage（使用固定key便于共享）
+            const STORAGE_KEY = 'product_orders_v1';
+            const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            orders.push(order);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+            
+            // 同时尝试保存到sessionStorage作为备份
+            try {
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+            } catch(e) {
+                console.log('sessionStorage保存失败');
+            }
+
+            // 显示成功消息
+            closeModal();
+            document.getElementById('successMessage').style.display = 'block';
+            
+            // 生成可复制的订单文本
+            const orderText = generateOrderText(order);
+            console.log('订单详情:', orderText);
+            
+            // 复制到剪贴板
+            navigator.clipboard.writeText(orderText).then(() => {
+                alert('订单已提交并复制到剪贴板！\n\n' + orderText.substring(0, 200) + '...');
+            }).catch(() => {
+                alert('订单已提交！\n\n请查看控制台获取订单详情。');
+            });
+
+            // 重置表单
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        }
+
+        // 生成订单文本
+        function generateOrderText(order) {
+            let text = `【新订单】\n`;
+            text += `订购人：${order.user.name}\n`;
+            text += `手机号：${order.user.phone}\n`;
+            if (order.user.wechat) text += `微信号：${order.user.wechat}\n`;
+            text += `下单时间：${order.submitTime}\n`;
+            text += `\n【商品清单】\n`;
+            
+            order.items.forEach((item, index) => {
+                text += `${index + 1}. ${item.name}\n`;
+                text += `   单价：¥${item.price} × 数量：${item.quantity} = ¥${item.subtotal}\n`;
+            });
+            
+            text += `\n【订单总计】\n`;
+            text += `商品种类：${order.items.length} 种\n`;
+            text += `商品总数：${order.items.reduce((sum, item) => sum + item.quantity, 0)} 件\n`;
+            text += `订单总价：¥${order.totalPrice}\n`;
+            
+            if (order.user.remark) {
+                text += `\n备注：${order.user.remark}\n`;
+            }
+            
+            return text;
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+</body>
+</html>
