@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: product-form
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: NOTIFY_EMAIL
+        value: 820389501@qq.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATA_DIR
+        value: /opt/render/project/data
+      - key: SECRET_KEY
+        generateValue: true

@@ -516,7 +516,7 @@
         }
 
         // 确认提交
-        function confirmSubmit() {
+        async function confirmSubmit() {
             const name = document.getElementById('userName').value.trim();
             const phone = document.getElementById('userPhone').value.trim();
             const shop = document.getElementById('userShop').value.trim();
@@ -546,38 +546,54 @@
                 order.totalPrice += data.quantity * data.price;
             }
 
-            // 保存到localStorage（使用固定key便于共享）
-            const STORAGE_KEY = 'product_orders_v1';
-            const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            orders.push(order);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-            
-            // 同时尝试保存到sessionStorage作为备份
+            const btn = document.querySelector('.modal .submit-btn');
+            btn.disabled = true;
+            btn.textContent = '提交中...';
+
             try {
-                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-            } catch(e) {
-                console.log('sessionStorage保存失败');
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    document.getElementById('successMessage').style.display = 'block';
+
+                    const orderText = generateOrderText(order);
+                    try {
+                        await navigator.clipboard.writeText(orderText);
+                    } catch(e) {}
+
+                    alert('订单提交成功！');
+
+                    setTimeout(() => { location.reload(); }, 2000);
+                } else {
+                    const result = await response.json();
+                    alert('提交失败: ' + (result.error || '服务器错误'));
+                    btn.disabled = false;
+                    btn.textContent = '确认提交';
+                }
+            } catch (error) {
+                console.error('提交订单失败:', error);
+                const STORAGE_KEY = 'product_orders_v1';
+                const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                orders.push(order);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+
+                closeModal();
+                document.getElementById('successMessage').style.display = 'block';
+
+                const orderText = generateOrderText(order);
+                try {
+                    await navigator.clipboard.writeText(orderText);
+                } catch(e) {}
+
+                alert('服务器未连接，订单已本地保存。\n请启动后端服务(python server.py)以同步订单。');
+
+                setTimeout(() => { location.reload(); }, 3000);
             }
-
-            // 显示成功消息
-            closeModal();
-            document.getElementById('successMessage').style.display = 'block';
-            
-            // 生成可复制的订单文本
-            const orderText = generateOrderText(order);
-            console.log('订单详情:', orderText);
-            
-            // 复制到剪贴板
-            navigator.clipboard.writeText(orderText).then(() => {
-                alert('订单已提交并复制到剪贴板！\n\n' + orderText.substring(0, 200) + '...');
-            }).catch(() => {
-                alert('订单已提交！\n\n请查看控制台获取订单详情。');
-            });
-
-            // 重置表单
-            setTimeout(() => {
-                location.reload();
-            }, 3000);
         }
 
         // 生成订单文本

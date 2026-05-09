@@ -229,25 +229,27 @@
     </div>
 
     <script>
-        // 加载所有订单
-        function loadOrders() {
-            const STORAGE_KEY = 'product_orders_v1';
-            let orders = [];
-            
-            // 尝试从localStorage读取
-            const localData = localStorage.getItem(STORAGE_KEY);
-            if (localData) {
-                orders = JSON.parse(localData);
-            } else {
-                // 尝试从sessionStorage读取（兼容旧版本）
-                const sessionData = sessionStorage.getItem(STORAGE_KEY);
-                if (sessionData) {
-                    orders = JSON.parse(sessionData);
+        let allOrders = [];
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                if (response.ok) {
+                    allOrders = await response.json();
+                } else {
+                    throw new Error('API请求失败');
+                }
+            } catch (error) {
+                console.warn('后端未连接，尝试从localStorage读取:', error.message);
+                const STORAGE_KEY = 'product_orders_v1';
+                const localData = localStorage.getItem(STORAGE_KEY);
+                if (localData) {
+                    allOrders = JSON.parse(localData);
                 }
             }
-            
-            displayOrders(orders);
-            updateStats(orders);
+
+            displayOrders(allOrders);
+            updateStats(allOrders);
         }
 
         // 显示订单列表
@@ -340,42 +342,55 @@
             detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
         }
 
-        // 删除订单
-        function deleteOrder(index) {
+        async function deleteOrder(index) {
             if (!confirm('确定要删除这个订单吗？')) return;
-            
-            const STORAGE_KEY = 'product_orders_v1';
-            const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            orders.splice(index, 1);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-            
+
+            try {
+                const response = await fetch(`/api/orders/${index}`, { method: 'DELETE' });
+                if (!response.ok) throw new Error('API删除失败');
+            } catch (error) {
+                console.warn('后端未连接，从localStorage删除:', error.message);
+                const STORAGE_KEY = 'product_orders_v1';
+                const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                orders.splice(index, 1);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+            }
+
             loadOrders();
         }
 
-        // 清空所有订单
-        function clearAllOrders() {
+        async function clearAllOrders() {
             if (!confirm('确定要清空所有订单吗？此操作不可恢复！')) return;
-            
-            const STORAGE_KEY = 'product_orders_v1';
-            localStorage.removeItem(STORAGE_KEY);
-            sessionStorage.removeItem(STORAGE_KEY);
+
+            try {
+                await fetch('/api/orders/clear', { method: 'POST' });
+            } catch (error) {
+                console.warn('后端未连接，清空localStorage:', error.message);
+                const STORAGE_KEY = 'product_orders_v1';
+                localStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem(STORAGE_KEY);
+            }
+
             loadOrders();
         }
 
-        // 导出所有订单
         function exportAllOrders() {
-            const STORAGE_KEY = 'product_orders_v1';
-            const orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            
-            if (orders.length === 0) {
+            if (allOrders.length === 0) {
                 alert('没有订单可导出');
                 return;
             }
 
+            try {
+                window.location.href = '/api/orders/export';
+                return;
+            } catch (error) {
+                console.warn('后端导出失败，使用本地导出:', error.message);
+            }
+
             let csv = '\uFEFF';
             csv += '订单号,订购人,手机号,下单店铺,商品名称,单价,数量,小计,订单总价,下单时间,备注\n';
-            
-            orders.forEach((order, index) => {
+
+            allOrders.forEach((order, index) => {
                 order.items.forEach(item => {
                     csv += [
                         index + 1,
